@@ -1,0 +1,30 @@
+workflows:
+  ios_release:
+    name: iOS Release (React Native)
+    instance_type: mac_mini_m2
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.voilabs.lovics
+
+    scripts:
+      - name: Install JS deps
+        script: |
+          npm ci
+
+      - name: Install CocoaPods
+        script: |
+          cd ios
+          pod install
+
+      - name: Build IPA
+        script: |
+          xcodebuild -version
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
