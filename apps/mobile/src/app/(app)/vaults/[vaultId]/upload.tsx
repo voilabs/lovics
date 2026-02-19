@@ -62,7 +62,10 @@ export default function UploadScreen() {
                 setSelectedFiles((prev) => [...prev, ...newFiles]);
             }
         } catch (error) {
-            alert(t("common.error"), t("vaultUpload.filePickError"));
+            alert(
+                t("common.error"),
+                t("vaultUpload.filePickError", { msg: error.message }),
+            );
         }
     };
 
