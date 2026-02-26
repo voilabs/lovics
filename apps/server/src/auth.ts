@@ -79,6 +79,7 @@ export const auth = betterAuth({
         }),
     ],
     trustedOrigins: [
+        "http://localhost:3000",
         "lovics://",
         ...(process.env.NODE_ENV === "development"
             ? ["exp://", "exp://**", "exp://192.168.*.*:*/**"]
