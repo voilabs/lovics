@@ -12,7 +12,11 @@ const app = new Elysia()
     .state("start", performance.now())
     .use(
         cors({
-            origin: process.env.CORS_URL,
+            origin: [
+                process.env.CORS_URL!,
+                "http://localhost:3000",
+                "https://web.lovics.app",
+            ],
             methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
             credentials: true,
             allowedHeaders: ["Content-Type", "Authorization"],
