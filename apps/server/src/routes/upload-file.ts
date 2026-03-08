@@ -73,7 +73,7 @@ export default createRoute(
                                 vault.isEncrypted && body.iv
                                     ? { iv: body.iv }
                                     : undefined,
-                            ACL: vault.isEncrypted ? "private" : "public-read",
+                            ACL: "private",
                         });
 
                         const { UploadId } = await s3Client.send(command);

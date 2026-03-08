@@ -5,6 +5,9 @@ import {
     vaultContentsTable,
 } from "@/drizzle/schema";
 import { createRoute } from "@/lib/createRoute";
+import { BUCKET_NAME, s3Client } from "@/lib/s3";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import {
     desc,
     eq,
@@ -82,16 +85,55 @@ export default createRoute(
                 const vaultsWithContents = vaults
                     .map((vault) => ({
                         ...vault,
-                        contents: latestContents
+                        vaultContentRows: latestContents
                             .filter((content) => content.vaultId === vault.id)
                             .map(({ rowNum, ...rest }) => rest),
                     }))
-                    .filter((vault) => vault.contents.length > 0);
+                    .filter((vault) => vault.vaultContentRows.length > 0);
 
-                return res.success({ vaults: vaultsWithContents });
+                const vaultsWithSignedUrls = await Promise.all(
+                    vaultsWithContents.map(async (vault) => {
+                        const rowsWithUrls = await Promise.all(
+                            vault.vaultContentRows.map(async (row) => {
+                                const filesWithUrls = await Promise.all(
+                                    (row.contents || []).map(async (file) => {
+                                        const command = new GetObjectCommand({
+                                            Bucket: BUCKET_NAME,
+                                            Key: file.path,
+                                        });
+
+                                        const url = await getSignedUrl(
+                                            s3Client,
+                                            command,
+                                            {
+                                                expiresIn: 900,
+                                            },
+                                        );
+
+                                        return {
+                                            ...file,
+                                            url,
+                                        };
+                                    }),
+                                );
+                                return {
+                                    ...row,
+                                    contents: filesWithUrls,
+                                };
+                            }),
+                        );
+                        return {
+                            ...vault,
+                            contents: rowsWithUrls,
+                            vaultContentRows: undefined,
+                        };
+                    }),
+                );
+
+                return res.success({ vaults: vaultsWithSignedUrls });
             },
             {
-                auth: true,
+                auth: false,
             },
         );
     },
