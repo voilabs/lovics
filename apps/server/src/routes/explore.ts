@@ -5,7 +5,16 @@ import {
     vaultContentsTable,
 } from "@/drizzle/schema";
 import { createRoute } from "@/lib/createRoute";
-import { desc, eq, sql, getTableColumns, inArray, lte } from "drizzle-orm";
+import {
+    desc,
+    eq,
+    sql,
+    getTableColumns,
+    inArray,
+    lte,
+    and,
+    exists,
+} from "drizzle-orm";
 
 export default createRoute(
     {
@@ -28,7 +37,22 @@ export default createRoute(
                         favoritesTable,
                         eq(vaultsTable.id, favoritesTable.vaultId),
                     )
-                    .where(eq(vaultsTable.isEncrypted, false))
+                    .where(
+                        and(
+                            eq(vaultsTable.isEncrypted, false),
+                            exists(
+                                db
+                                    .select({ id: vaultContentsTable.id })
+                                    .from(vaultContentsTable)
+                                    .where(
+                                        eq(
+                                            vaultContentsTable.vaultId,
+                                            vaultsTable.id,
+                                        ),
+                                    ),
+                            ),
+                        ),
+                    )
                     .groupBy(vaultsTable.id)
                     .orderBy(desc(sql`count(${favoritesTable.id})`))
                     .limit(10);
