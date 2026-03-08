@@ -17,7 +17,10 @@ import {
     lte,
     and,
     exists,
+    ilike,
+    count,
 } from "drizzle-orm";
+import { t } from "elysia";
 
 export default createRoute(
     {
@@ -26,7 +29,38 @@ export default createRoute(
     (app) => {
         app.get(
             "/",
-            async ({ user, res }) => {
+            async ({ user, query, res }) => {
+                let { search = "", page = 1 } = query;
+
+                const [totalResults] = await db
+                    .select({
+                        count: count(vaultsTable.id),
+                    })
+                    .from(vaultsTable)
+                    .where(
+                        and(
+                            eq(vaultsTable.isEncrypted, false),
+                            ilike(vaultsTable.title, `%${search}%`),
+                            exists(
+                                db
+                                    .select({ id: vaultContentsTable.id })
+                                    .from(vaultContentsTable)
+                                    .where(
+                                        eq(
+                                            vaultContentsTable.vaultId,
+                                            vaultsTable.id,
+                                        ),
+                                    ),
+                            ),
+                        ),
+                    )
+                    .catch(() => [{ count: 0 }]);
+
+                const maxPages = Math.ceil((totalResults as any).count / 10);
+
+                if (page > maxPages) page = maxPages;
+                if (page < 1) page = 1;
+
                 const vaults = await db
                     .select({
                         ...getTableColumns(vaultsTable),
@@ -43,6 +77,7 @@ export default createRoute(
                     .where(
                         and(
                             eq(vaultsTable.isEncrypted, false),
+                            ilike(vaultsTable.title, `%${search}%`),
                             exists(
                                 db
                                     .select({ id: vaultContentsTable.id })
@@ -58,10 +93,11 @@ export default createRoute(
                     )
                     .groupBy(vaultsTable.id)
                     .orderBy(desc(sql`count(${favoritesTable.id})`))
-                    .limit(10);
+                    .limit(10)
+                    .offset((page - 1) * 10);
 
                 if (vaults.length === 0) {
-                    return res.success({ vaults: [] });
+                    return res.success({ vaults: [], maxPages, page });
                 }
 
                 const vaultIds = vaults.map((v) => v.id);
@@ -130,10 +166,20 @@ export default createRoute(
                     }),
                 );
 
-                return res.success({ vaults: vaultsWithSignedUrls });
+                return res.success({
+                    vaults: vaultsWithSignedUrls,
+                    maxPages,
+                    page,
+                });
             },
             {
-                auth: false,
+                query: t.Object({
+                    search: t.Optional(
+                        t.String({ minLength: 0, maxLength: 255 }),
+                    ),
+                    page: t.Optional(t.Number({ default: 1 })),
+                }),
+                auth: true,
             },
         );
     },
