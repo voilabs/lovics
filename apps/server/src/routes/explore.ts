@@ -55,12 +55,14 @@ export default createRoute(
                     .from(sq)
                     .where(lte(sq.rowNum, 5));
 
-                const vaultsWithContents = vaults.map((vault) => ({
-                    ...vault,
-                    contents: latestContents
-                        .filter((content) => content.vaultId === vault.id)
-                        .map(({ rowNum, ...rest }) => rest),
-                }));
+                const vaultsWithContents = vaults
+                    .map((vault) => ({
+                        ...vault,
+                        contents: latestContents
+                            .filter((content) => content.vaultId === vault.id)
+                            .map(({ rowNum, ...rest }) => rest),
+                    }))
+                    .filter((vault) => vault.contents.length > 0);
 
                 return res.success({ vaults: vaultsWithContents });
             },
