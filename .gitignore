@@ -7,3 +7,5 @@ apps/web/node_modules
 apps/server/node_modules
 
 www/node_modules
+
+apps/web

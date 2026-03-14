@@ -1,14 +1,20 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, uuidv4 } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/drizzle";
 import * as schema from "@/drizzle/schemas/auth-schema";
 import { expo } from "@better-auth/expo";
 import Elysia from "elysia";
-import { emailOTP } from "better-auth/plugins";
+import { createAuthMiddleware, emailOTP } from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 import Handlebars from "handlebars";
 import fs from "fs/promises";
+import { s3Client } from "./lib/s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { toPng } from "@dicebear/converter";
+import { createAvatar } from "@dicebear/core";
+import { glass } from "@dicebear/collection";
+import { v4 as uuid } from "uuid";
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export const auth = betterAuth({
@@ -78,6 +84,39 @@ export const auth = betterAuth({
             otpLength: 6,
         }),
     ],
+    hooks: {
+        before: createAuthMiddleware(async (ctx) => {
+            if (ctx.path === "/sign-up/email") {
+                const avatar = createAvatar(glass, {
+                    seed: ctx.body.name.replace(":", " "),
+                });
+
+                const png = toPng(avatar);
+                const dataUri = await png.toArrayBuffer();
+                const avatarName = `${uuid()}.png`;
+
+                const command = new PutObjectCommand({
+                    Bucket: "",
+                    Key: `avatars/${avatarName}`,
+                    Body: Buffer.from(dataUri),
+                    ContentType: "image/png",
+                    ACL: "public-read",
+                });
+
+                await s3Client.send(command);
+
+                return {
+                    context: {
+                        ...ctx,
+                        body: {
+                            ...ctx.body,
+                            image: `https://cdn.lovics.app/avatars/${avatarName}`,
+                        },
+                    },
+                };
+            }
+        }),
+    },
     trustedOrigins: [
         "http://localhost:3000",
         "https://web.lovics.app",

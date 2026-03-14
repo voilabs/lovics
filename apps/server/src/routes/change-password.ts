@@ -14,7 +14,6 @@ export default createRoute(
             async ({ user, body, params, res }) => {
                 const { id } = params;
 
-                // 1. Yetki Kontrolü: Kullanıcı bu kasanın üyesi mi?
                 const [membership] = await db
                     .select()
                     .from(vaultMembersTable)

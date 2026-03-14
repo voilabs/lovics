@@ -12,10 +12,6 @@ export const user = pgTable("user", {
         .defaultNow()
         .$onUpdate(() => /* @__PURE__ */ new Date())
         .notNull(),
-    publicKey: text("public_key"),
-    encryptedPrivateKey: text("encrypted_private_key"),
-    encryptedPrivateKeyRecovery: text("encrypted_private_key_recovery"),
-    encryptionSalt: text("encryption_salt"),
 });
 
 export const session = pgTable(

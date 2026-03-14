@@ -167,6 +167,7 @@ export default createRoute(
                             title: body.title || "Untitled",
                             description: body.description || "",
                             contents: contents,
+                            createdBy: user.id,
                         });
 
                         return res.success({ success: true });

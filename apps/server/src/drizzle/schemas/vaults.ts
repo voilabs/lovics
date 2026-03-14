@@ -24,6 +24,10 @@ export const vaultContentsTable = pgTable("vault_contents", {
                 size: string;
                 iv: string | null;
                 alt?: string;
+                dimensions?: {
+                    width: number;
+                    height: number;
+                };
             }[]
         >()
         .default([]),
@@ -32,6 +36,7 @@ export const vaultContentsTable = pgTable("vault_contents", {
         .notNull()
         .defaultNow()
         .$onUpdateFn(() => new Date()),
+    createdBy: varchar().references(() => user.id),
 });
 
 export const vaultsTable = pgTable("vaults", {
