@@ -25,6 +25,7 @@
         "@dicebear/converter": "^9.4.0",
         "@dicebear/core": "^9.4.0",
         "@elysiajs/cors": "^1.4.1",
+        "@voilabs/oilang": "^0.0.26",
         "argon2": "^0.44.0",
         "axios": "^1.13.5",
         "bad-words": "^4.0.0",
@@ -40,6 +41,7 @@
         "pg": "^8.18.0",
         "rate-limit-redis": "^4.3.1",
         "resend": "^6.9.1",
+        "unique-username-generator": "^1.5.1",
         "uuid": "^13.0.0"
     }
 }

@@ -15,6 +15,27 @@
       "when": 1773339956713,
       "tag": "0001_ambitious_unicorn",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774269435806,
+      "tag": "0002_overjoyed_nightshade",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774271486433,
+      "tag": "0003_superb_raider",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1774272683946,
+      "tag": "0004_futuristic_the_fallen",
+      "breakpoints": true
     }
   ]
 }

@@ -1,10 +1,15 @@
-import { betterAuth, uuidv4 } from "better-auth";
+import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/drizzle";
 import * as schema from "@/drizzle/schemas/auth-schema";
 import { expo } from "@better-auth/expo";
 import Elysia from "elysia";
-import { createAuthMiddleware, emailOTP } from "better-auth/plugins";
+import {
+    admin as adminPlugin,
+    createAuthMiddleware,
+    emailOTP,
+    username,
+} from "better-auth/plugins";
 import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 import Handlebars from "handlebars";
@@ -15,7 +20,24 @@ import { toPng } from "@dicebear/converter";
 import { createAvatar } from "@dicebear/core";
 import { glass } from "@dicebear/collection";
 import { v4 as uuid } from "uuid";
+import { createAccessControl } from "better-auth/plugins/access";
+import { defaultStatements, adminAc } from "better-auth/plugins/admin/access";
 const resend = new Resend(process.env.RESEND_API_KEY!);
+
+const statement = {
+    ...defaultStatements,
+    locales: ["access"],
+} as const;
+
+const ac = createAccessControl(statement);
+const admin = ac.newRole({
+    ...adminAc.statements,
+    user: ["list"],
+});
+const superAdmin = ac.newRole({
+    ...adminAc.statements,
+    locales: ["access"],
+});
 
 export const auth = betterAuth({
     baseURL: process.env.BASE_URL,
@@ -27,8 +49,25 @@ export const auth = betterAuth({
     emailAndPassword: {
         enabled: true,
     },
+    user: {
+        additionalFields: {
+            lastName: {
+                type: "string",
+            },
+        },
+    },
     plugins: [
         expo(),
+        username(),
+        adminPlugin({
+            ac,
+            defaultRole: "regular",
+            roles: {
+                admin,
+                superAdmin,
+            },
+            adminRoles: ["admin", "superAdmin"],
+        }),
         emailOTP({
             sendVerificationOTP: async ({ email, otp, type }) => {
                 const [userObj] = await db
@@ -105,12 +144,18 @@ export const auth = betterAuth({
 
                 await s3Client.send(command);
 
+                const [firstName, lastName] = ctx.body.name.split(":");
+
                 return {
                     context: {
                         ...ctx,
                         body: {
                             ...ctx.body,
                             image: `https://cdn.lovics.app/avatars/${avatarName}`,
+                            name: firstName,
+                            data: {
+                                lastName,
+                            },
                         },
                     },
                 };

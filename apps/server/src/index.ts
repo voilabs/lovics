@@ -3,9 +3,44 @@ import { auth, betterAuthPlugin } from "@/auth";
 import cors from "@elysiajs/cors";
 import { RouteLoader } from "@/lib/loadRoutes";
 import chalk from "chalk";
-import { db } from "@/drizzle";
 import { ip } from "elysia-ip";
 import { rateLimitPlugin } from "./lib/rateLimit";
+
+import { OILang } from "@voilabs/oilang";
+import { PostgreSQL } from "@voilabs/oilang/adapters";
+import { RedisStore } from "@voilabs/oilang/stores";
+import { elysiaHandler } from "@voilabs/oilang/handlers";
+
+const OI = new OILang({
+    database: new PostgreSQL(process.env.DATABASE_URL!, {
+        schemaNames: {
+            keys: "i18n_keys",
+            locales: "i18n_locales",
+        },
+    }),
+    store: new RedisStore(process.env.REDIS_URL!),
+});
+
+await OI.init();
+
+const oilangHandler = elysiaHandler(OI, {
+    onAuthHandle: async ({ request, status }: any) => {
+        const session = await auth.api.getSession({
+            headers: request.headers,
+        });
+        if (!session) return status(401);
+
+        const hasPermission = await auth.api.userHasPermission({
+            body: {
+                permissions: {
+                    locales: ["access"],
+                },
+                userId: session.user.id,
+            },
+        });
+        if (!hasPermission) return status(403);
+    },
+}) as any;
 
 const app = new Elysia()
     .use(ip())
@@ -63,6 +98,7 @@ const app = new Elysia()
     })
     .use(betterAuthPlugin)
     .use(rateLimitPlugin)
+    .use(oilangHandler)
     .derive(({ set }) => {
         const res = async ({
             json,
