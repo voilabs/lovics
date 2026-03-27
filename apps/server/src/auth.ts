@@ -14,9 +14,9 @@ import { eq } from "drizzle-orm";
 import { Resend } from "resend";
 import Handlebars from "handlebars";
 import fs from "fs/promises";
-import { s3Client } from "./lib/s3";
+import { BUCKET_NAME, s3Client } from "./lib/s3";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { toPng } from "@dicebear/converter";
+import { toPng, toWebp } from "@dicebear/converter";
 import { createAvatar } from "@dicebear/core";
 import { glass } from "@dicebear/collection";
 import { v4 as uuid } from "uuid";
@@ -27,16 +27,19 @@ const resend = new Resend(process.env.RESEND_API_KEY!);
 const statement = {
     ...defaultStatements,
     locales: ["access"],
+    vaults: ["list", "delete"],
 } as const;
 
 const ac = createAccessControl(statement);
 const admin = ac.newRole({
     ...adminAc.statements,
     user: ["list"],
+    vaults: ["list", "delete"],
 });
 const superAdmin = ac.newRole({
     ...adminAc.statements,
     locales: ["access"],
+    vaults: ["list", "delete"],
 });
 
 export const auth = betterAuth({
@@ -130,15 +133,15 @@ export const auth = betterAuth({
                     seed: ctx.body.name.replace(":", " "),
                 });
 
-                const png = toPng(avatar);
+                const png = toWebp(avatar);
                 const dataUri = await png.toArrayBuffer();
-                const avatarName = `${uuid()}.png`;
+                const avatarName = `${uuid()}.webp`;
 
                 const command = new PutObjectCommand({
-                    Bucket: "",
+                    Bucket: BUCKET_NAME,
                     Key: `avatars/${avatarName}`,
                     Body: Buffer.from(dataUri),
-                    ContentType: "image/png",
+                    ContentType: "image/webp",
                     ACL: "public-read",
                 });
 
@@ -187,4 +190,20 @@ export const betterAuthPlugin = new Elysia({ name: "better-auth" })
                 };
             },
         },
+        permissions: (
+            perms: typeof auth.api.userHasPermission.arguments.body.permissions,
+        ) => ({
+            async afterHandle({ status, user }: any) {
+                if (!user) return status(401);
+
+                const session = await auth.api.userHasPermission({
+                    body: {
+                        permissions: perms,
+                        userId: user.id,
+                    },
+                });
+                if (!session) return status(403);
+                if (!session?.success) return status(403);
+            },
+        }),
     });
